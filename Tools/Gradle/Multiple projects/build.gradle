@@ -1,0 +1,127 @@
+/********************************************************
+* Web APIを開発することを想定したマルチプロジェクトの定義例 *
+********************************************************/
+
+plugins {
+    id 'war'
+}
+
+// 依存関係のバージョンを定義
+ext {
+}
+
+
+// バージョンを取得
+def versionProps = new Properties()
+file('version.properties').withInputStream { versionProps.load(it) }
+
+
+/*******************************
+* Warに含める依存するサブジェクト *
+********************************/
+dependencies {
+    // バックエンドAPIモジュール
+    implementation project(":api")
+    // ビジネスロジックやサービス層
+    implementation project(":service")
+    // 共通ライブラリモジュール
+    implementation project(":common")
+}
+
+/*****************
+* Warに関する設定 *
+******************/
+war {
+    archiveFileName = 'ROOT.war'
+}
+
+/*********************
+* リポジトリ関する設定 *
+**********************/
+repositories {
+    mavenCentral()
+}
+
+/**************************
+* サブプロジェクトの共通設定 *
+***************************/
+subprojects {
+
+    apply plugin: 'java'
+    // クライアントのリバースドメインを設定
+    group = 'xxx.xxx'
+    version = versionProps['component_version']
+    sourceCompatibility = versionProps['java_version']
+    targetCompatibility = versionProps['java_version']
+
+    repositories {
+        mavenCentral()
+    }
+
+    dependencies {
+
+        // ------------------------------------------------------
+        // Testing Frameworks & Tools
+        // ------------------------------------------------------
+        testImplementation 'org.junit.platform:junit-platform-engine:1.13.1'
+        testImplementation 'org.junit.platform:junit-platform-launcher:1.13.1'
+        testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.2'
+        testImplementation 'org.junit.jupiter:junit-jupiter-engine:5.8.2'
+        testImplementation 'org.springframework.boot:spring-boot-starter-test:3.5.0'
+        testImplementation 'org.mockito:mockito-core:5.18.0'
+    }
+
+    // JUnit 5の設定（サブプロジェクトに適用）
+    test {
+        useJUnitPlatform()
+    }
+
+    // 各サブプロジェクトのJavadocを出力する設定
+    javadoc {
+        // 各サブプロジェクトごとに分けて出力
+        destinationDir = file("$rootDir/build/docs/javadoc/${project.name}") 
+
+        options {
+            title = '《タイトル》'
+            header = "《見出し情報》"
+            memberLevel = JavadocMemberLevel.PACKAGE
+            links 'https://docs.oracle.com/en/java/javase/17/docs/api/'
+            encoding = 'UTF-8'
+            locale = 'ja_JP'
+        }
+    }
+}
+
+// AggregateJavadocタスクの設定
+tasks.register('aggregateJavadoc', Javadoc) {
+    group = 'Documentation'
+    description = 'Aggregates all Javadoc into one location'
+    source = files(subprojects.collect { it.sourceSets.main.allSource })
+    classpath = files(subprojects.collect { it.sourceSets.main.compileClasspath })
+
+    // すべてのサブプロジェクトのソースコードを集めてJavadocを生成
+    source = files(subprojects.collect {
+        it.sourceSets.main.allJava.matching {
+            include '**/*.java'
+        }
+    })
+
+    // 出力先ディレクトリを統一
+    destinationDir = file("$rootDir/build/docs/javadoc")
+
+    options {
+        title = '《タイトル》'
+        header = "《見出し情報》"
+        memberLevel = JavadocMemberLevel.PACKAGE
+        links 'https://docs.oracle.com/en/java/javase/17/docs/api/'
+        encoding = 'UTF-8'
+        locale = 'ja_JP'
+        addStringOption('proc=none', null)
+        addBooleanOption('Xdoclint:none', true)
+    }
+
+    doLast {
+        println 'Aggregated Javadoc generated successfully!'
+    }
+}
+
